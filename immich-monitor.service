@@ -1,0 +1,18 @@
+[Unit]
+Description=Immich Container Idle Spin-Down Monitor
+Documentation=https://github.com/immich-app/immich
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/opt/immich-monitor/immich-monitor.sh
+Restart=on-failure
+RestartSec=10
+
+# Hardening
+NoNewPrivileges=false
+#ReadWritePaths=/var/log/immich/
+
+[Install]
+WantedBy=multi-user.target

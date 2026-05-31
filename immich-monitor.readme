@@ -1,0 +1,17 @@
+To install immich-monitor.sh as service:
+
+# 1. Copy the script to a permanent location
+sudo mkdir -p /opt/immich-monitor
+sudo cp immich-monitor.sh /opt/immich-monitor/
+sudo chmod +x /opt/immich-monitor/immich-monitor.sh
+
+# 2. Install the service
+sudo cp immich-monitor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+
+# 3. Enable (auto-start on boot) and start now
+sudo systemctl enable --now immich-monitor.service
+
+# 4. Check status / logs
+sudo systemctl status immich-monitor
+sudo journalctl -u immich-monitor -f
