@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Immich keeps database disk running 24/7
-# This script pauses immich containers ($MONITOR_CONTAINERS) when there is no $PORT activity
+# This script pauses immich containers ($CONTAINERS) when there is no $PORT activity
 # and unpauses Immich when any activity is detected.
 # Uses tcpdump and saves logs in $LOGFILE
 # can be installed as system service - see immich-monitor.readme and immich-monitor.service
@@ -9,7 +9,7 @@
 # --- Configuration ---
 PORT=2283
 INTERFACE="any"
-MONITOR_CONTAINERS="immich_server immich_postgres" #conatiner(s) to monitor
+CONTAINERS=("immich_server" "immich_machine_learning" "immich_postgres" "immich_redis") #conatiners to monitor
 TIMEOUT=5               # minutes of inactivity to pause or stay active before checking again
 LOGFILE="/var/log/immich/immich-monitor.log"
 LOG_MAX_SIZE=1          # max log size in MB
@@ -39,7 +39,7 @@ fi
 
 # --- Smart Trimming Logging Function ---
 log_message() {
-    local msg="$1"
+    local msg="$*"
     local timestamp
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     local formatted_msg="[$timestamp] $msg"
@@ -63,7 +63,7 @@ log_message() {
         echo "[$timestamp] --- [SYSTEM] Oldest entries purged. Log trimmed to $LOG_TRIM_PERCENT% original size---" >> "$LOGFILE"
         echo "============================================================================================================" >> "$LOGFILE"
         echo >> "$LOGFILE"
-        echo "Monitoring port $PORT for Immich traffic. Target: $MONITOR_CONTAINERS" >> "$LOGFILE"
+        echo "Monitoring port $PORT for Immich traffic. Target: ${CONTAINERS[@]}" >> "$LOGFILE"
         echo >> "$LOGFILE"
     fi
 }
@@ -71,7 +71,7 @@ log_message() {
 
 # --- Dynamic Status of containers ---
 are_all_running() {
-    for container in $MONITOR_CONTAINERS; do
+    for container in "${CONTAINERS[@]}"; do
         if [ "$(docker inspect -f '{{.State.Paused}}' "$container" 2>/dev/null)" = "true" ]; then
             return 1 # At least one container is down
         fi
@@ -85,7 +85,7 @@ are_all_running() {
 # --- Main Logic (State Machine) ---
 echo "============================================================================================================" >> "$LOGFILE"
 log_message "Initializing immich-monitor on port $PORT..."
-log_message "Managing containers: $MONITOR_CONTAINERS"
+log_message "Managing containers: ${CONTAINERS[@]}"
 echo "============================================================================================================" >> "$LOGFILE"
 
 while true; do
@@ -103,7 +103,7 @@ while true; do
 
         log_message "⚡ Traffic detected! Unpausing containers..."
         # Unpause containers
-        docker unpause $MONITOR_CONTAINERS >/dev/null 2>&1
+        docker unpause "${CONTAINERS[@]}" >/dev/null 2>&1
         # Pause checking right after spin-up
         log_message "⏸️ Activity pmonitoring paused for $TIMEOUT minutes..."
         sleep $((TIMEOUT * 60))
@@ -124,7 +124,7 @@ while true; do
             log_message "💤 $TIMEOUT minutes of inactivity reached. Pausing containers..."
 
             # Pause containers (e.g., app stops before database)
-            docker pause $MONITOR_CONTAINERS >/dev/null 2>&1
+            docker pause "${CONTAINERS[@]}" >/dev/null 2>&1
             # Break the inner loop to re-evaluate state at the top of the main loop
             break
         else
